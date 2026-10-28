@@ -211,6 +211,11 @@ export const AgentDirectory = () => {
                     </span>
                     <span>·</span>
                     <span>Inmobiliaria: <strong className="text-indigo-700">{agent.agencySplitPercent}%</strong> de sus honorarios</span>
+                    {!agent.password && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
+                        Sin contraseña: no puede ingresar
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -360,7 +365,7 @@ export const AgentDirectory = () => {
                       autoComplete="off"
                       value={formData.username}
                       onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
-                      placeholder="Ej. mgomez"
+                      placeholder="Ej. shidalgo"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
                     />
                   </div>

@@ -34,7 +34,7 @@ const withAgentDefaults = (agent) => {
     ...agent,
     avatar: agent.avatar || initialsAvatar(agent.name),
     username: agent.username || seed?.username || agent.email?.split('@')[0] || agent.id,
-    password: agent.password || seed?.password || '1234',
+    password: agent.password || '',
     agencySplitPercent: agent.agencySplitPercent ?? seed?.agencySplitPercent ?? 50
   };
 };
@@ -244,14 +244,25 @@ export const RealEstateProvider = ({ children }) => {
   };
 
   // AUTH
+  // Primer uso: la dueña todavía no creó su contraseña
+  const needsAdminSetup = !adminAccount.password;
+
+  const setupAdminPassword = (password) => {
+    if (!needsAdminSetup || !password) return;
+    setAdminAccount(prev => ({ ...prev, password }));
+    setSession({ role: 'admin' });
+    setCurrentView('dashboard');
+  };
+
   const login = (username, password) => {
     const user = username.trim().toLowerCase();
-    if (user === adminAccount.username.toLowerCase() && password === adminAccount.password) {
+    if (!password) return false;
+    if (adminAccount.password && user === adminAccount.username.toLowerCase() && password === adminAccount.password) {
       setSession({ role: 'admin' });
       setCurrentView('dashboard');
       return true;
     }
-    const agent = agents.find(a => !a.isOwner && a.username?.toLowerCase() === user && a.password === password);
+    const agent = agents.find(a => !a.isOwner && a.password && a.username?.toLowerCase() === user && a.password === password);
     if (agent) {
       setSession({ role: 'broker', agentId: agent.id });
       setCurrentView('dashboard');
@@ -721,6 +732,8 @@ export const RealEstateProvider = ({ children }) => {
         isAdmin,
         adminAccount,
         login,
+        needsAdminSetup,
+        setupAdminPassword,
         logout,
         updateAdminAccount,
         addMovement,

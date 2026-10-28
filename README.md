@@ -43,7 +43,7 @@ Panel integral de gestión operativa y comercial para inmobiliarias, agentes de 
    - El admin registra ingresos y egresos propios de la inmobiliaria.
    - Cada broker registra sus ingresos y egresos; en cada venta figura el desglose exacto: honorarios, **parte que corresponde a la inmobiliaria** (según el % que define el admin por broker) y neto del broker.
    - El admin ve las ventas de todos los brokers, lo pendiente de rendir y marca cada venta como liquidada.
-   - Las contraseñas iniciales se entregan aparte (no se publican en el repositorio). Se cambian en *Equipo de Agentes* → editar agente / *Cuenta Admin*.
+   - Sin contraseñas en el código: en el primer ingreso la dueña crea la contraseña de `admin`, y después asigna usuario y contraseña a cada broker en *Equipo de Agentes* (hasta entonces el broker no puede ingresar).
    - ⚠️ Los datos y contraseñas se guardan en el navegador (LocalStorage): sirve para organizar al equipo, pero no es una seguridad real hasta conectar un backend.
 
 ---
