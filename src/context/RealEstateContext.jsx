@@ -1,14 +1,42 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_PROPERTIES, INITIAL_AGENTS, INITIAL_RESERVATIONS, INITIAL_RENTALS } from '../data/initialData';
+import { INITIAL_PROPERTIES, INITIAL_AGENTS, INITIAL_RESERVATIONS, INITIAL_RENTALS, INITIAL_ADMIN, INITIAL_MOVEMENTS } from '../data/initialData';
+import { initialsAvatar } from '../utils/placeholders';
 
 const RealEstateContext = createContext();
 
 const STORAGE_KEYS = {
-  PROPERTIES: 'inmopanel_properties_v2',
-  AGENTS: 'inmopanel_agents_v2',
-  RESERVATIONS: 'inmopanel_reservations_v2',
-  RENTALS: 'inmopanel_rentals_v2',
-  AGENT_MODE: 'inmopanel_agent_mode_v2'
+  // v3: datos reales de Benitez Inmobiliaria (reemplazan la demo)
+  PROPERTIES: 'inmopanel_properties_v3',
+  AGENTS: 'inmopanel_agents_v3',
+  RESERVATIONS: 'inmopanel_reservations_v3',
+  RENTALS: 'inmopanel_rentals_v3',
+  AGENT_MODE: 'inmopanel_agent_mode_v2',
+  ADMIN: 'inmopanel_admin_v2',
+  MOVEMENTS: 'inmopanel_movements_v2',
+  SESSION: 'inmopanel_session_v2'
+};
+
+export const ADMIN_USER_ID = 'admin';
+
+// Calcula honorarios de una venta y la parte exacta que corresponde a la inmobiliaria
+export const calcSaleSplit = (salePrice, commissionPercent, agencySplitPercent) => {
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const commissionTotal = round2((Number(salePrice) || 0) * (Number(commissionPercent) || 0) / 100);
+  const agencyShare = round2(commissionTotal * (Number(agencySplitPercent) || 0) / 100);
+  return { commissionTotal, agencyShare, brokerShare: round2(commissionTotal - agencyShare) };
+};
+
+// Completa credenciales en agentes guardados antes de que existiera el login
+const withAgentDefaults = (agent) => {
+  const seed = INITIAL_AGENTS.find(a => a.id === agent.id);
+  if (agent.isOwner) return { ...agent, avatar: agent.avatar || initialsAvatar(agent.name) };
+  return {
+    ...agent,
+    avatar: agent.avatar || initialsAvatar(agent.name),
+    username: agent.username || seed?.username || agent.email?.split('@')[0] || agent.id,
+    password: agent.password || seed?.password || '1234',
+    agencySplitPercent: agent.agencySplitPercent ?? seed?.agencySplitPercent ?? 50
+  };
 };
 
 export const RealEstateProvider = ({ children }) => {
@@ -49,7 +77,7 @@ export const RealEstateProvider = ({ children }) => {
   const [agents, setAgents] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.AGENTS);
-      return saved ? JSON.parse(saved) : INITIAL_AGENTS;
+      return (saved ? JSON.parse(saved) : INITIAL_AGENTS).map(withAgentDefaults);
     } catch {
       return INITIAL_AGENTS;
     }
@@ -70,6 +98,34 @@ export const RealEstateProvider = ({ children }) => {
       return saved ? JSON.parse(saved) : INITIAL_RENTALS;
     } catch {
       return INITIAL_RENTALS;
+    }
+  });
+
+  const [adminAccount, setAdminAccount] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.ADMIN);
+      return saved ? JSON.parse(saved) : INITIAL_ADMIN;
+    } catch {
+      return INITIAL_ADMIN;
+    }
+  });
+
+  const [movements, setMovements] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MOVEMENTS);
+      return saved ? JSON.parse(saved) : INITIAL_MOVEMENTS;
+    } catch {
+      return INITIAL_MOVEMENTS;
+    }
+  });
+
+  // Sesión: { role: 'admin' } | { role: 'broker', agentId }
+  const [session, setSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SESSION);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
   });
 
@@ -141,12 +197,118 @@ export const RealEstateProvider = ({ children }) => {
     }
   }, [isAgentMode]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ADMIN, JSON.stringify(adminAccount));
+    } catch (e) {
+      console.error('Error saving admin account', e);
+    }
+  }, [adminAccount]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
+    } catch (e) {
+      console.error('Error saving movements to localStorage', e);
+    }
+  }, [movements]);
+
+  useEffect(() => {
+    try {
+      if (session) localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
+      else localStorage.removeItem(STORAGE_KEYS.SESSION);
+    } catch (e) {
+      console.error('Error saving session', e);
+    }
+  }, [session]);
+
+  // Usuario logueado (null si la sesión apunta a un broker eliminado)
+  const currentUser = (() => {
+    if (!session) return null;
+    if (session.role === 'admin') {
+      return { id: ADMIN_USER_ID, role: 'admin', name: adminAccount.name, username: adminAccount.username };
+    }
+    const agent = agents.find(a => a.id === session.agentId && !a.isOwner);
+    return agent ? { id: agent.id, role: 'broker', name: agent.name, username: agent.username, avatar: agent.avatar, agencySplitPercent: agent.agencySplitPercent } : null;
+  })();
+  const isAdmin = currentUser?.role === 'admin';
+  // Brokers con cuenta propia (la dueña opera con la cuenta admin)
+  const brokers = agents.filter(a => !a.isOwner);
+
   // Helper notification toast
   const notify = (text, type = 'info') => {
     setToastMessage({ text, type, id: Date.now() });
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
+  };
+
+  // AUTH
+  const login = (username, password) => {
+    const user = username.trim().toLowerCase();
+    if (user === adminAccount.username.toLowerCase() && password === adminAccount.password) {
+      setSession({ role: 'admin' });
+      setCurrentView('dashboard');
+      return true;
+    }
+    const agent = agents.find(a => !a.isOwner && a.username?.toLowerCase() === user && a.password === password);
+    if (agent) {
+      setSession({ role: 'broker', agentId: agent.id });
+      setCurrentView('dashboard');
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setSession(null);
+    setSelectedPropertyForDetail(null);
+    setCurrentView('dashboard');
+  };
+
+  const updateAdminAccount = (fields) => {
+    setAdminAccount(prev => ({ ...prev, ...fields }));
+    notify('Cuenta de administración actualizada', 'success');
+  };
+
+  // FINANZAS: ingresos y egresos
+  const buildMovement = (data) => {
+    if (data.kind !== 'venta') return { ...data, type: data.type, kind: 'general' };
+    const split = calcSaleSplit(data.salePrice, data.commissionPercent, data.agencySplitPercent);
+    return { ...data, type: 'ingreso', ...split, amount: split.commissionTotal };
+  };
+
+  const addMovement = (data) => {
+    const movement = {
+      id: `mov-${Date.now()}`,
+      agencyShareSettled: false,
+      ...buildMovement(data),
+      userId: isAdmin ? (data.userId || ADMIN_USER_ID) : currentUser?.id
+    };
+    setMovements(prev => [movement, ...prev]);
+    notify(movement.type === 'ingreso' ? 'Ingreso registrado' : 'Egreso registrado', 'success');
+    return movement;
+  };
+
+  const updateMovement = (id, data) => {
+    setMovements(prev => prev.map(m => {
+      if (m.id !== id) return m;
+      if (!isAdmin && m.userId !== currentUser?.id) return m;
+      return { ...m, ...buildMovement({ ...m, ...data }), userId: isAdmin ? (data.userId || m.userId) : m.userId };
+    }));
+    notify('Movimiento actualizado', 'success');
+  };
+
+  const deleteMovement = (id) => {
+    setMovements(prev => prev.filter(m => m.id !== id || (!isAdmin && m.userId !== currentUser?.id)));
+    notify('Movimiento eliminado', 'info');
+  };
+
+  // Solo el admin marca si la inmobiliaria ya cobró su parte de una venta
+  const toggleAgencyShareSettled = (id) => {
+    if (!isAdmin) return;
+    setMovements(prev => prev.map(m => m.id === id ? { ...m, agencyShareSettled: !m.agencyShareSettled } : m));
+    notify('Estado de liquidación actualizado', 'success');
   };
 
   // CRUD Properties
@@ -456,7 +618,8 @@ export const RealEstateProvider = ({ children }) => {
     const newAgent = {
       id: `agent-${Date.now()}`,
       phoneClean: agentData.phone?.replace(/[^0-9]/g, '') || '',
-      avatar: agentData.avatar || `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?auto=format&fit=crop&w=256&q=80`,
+      avatar: agentData.avatar || initialsAvatar(agentData.name),
+      agencySplitPercent: 50,
       ...agentData
     };
     setAgents(prev => [...prev, newAgent]);
@@ -482,7 +645,9 @@ export const RealEstateProvider = ({ children }) => {
       properties,
       agents,
       reservations,
-      rentals
+      rentals,
+      movements,
+      adminAccount
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -498,9 +663,11 @@ export const RealEstateProvider = ({ children }) => {
     try {
       const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
       if (data.properties) setProperties(data.properties);
-      if (data.agents) setAgents(data.agents);
+      if (data.agents) setAgents(data.agents.map(withAgentDefaults));
       if (data.reservations) setReservations(data.reservations);
       if (data.rentals) setRentals(data.rentals);
+      if (data.movements) setMovements(data.movements);
+      if (data.adminAccount) setAdminAccount(data.adminAccount);
       notify('Datos restaurados correctamente desde el respaldo', 'success');
       return true;
     } catch (e) {
@@ -515,6 +682,7 @@ export const RealEstateProvider = ({ children }) => {
     setAgents(INITIAL_AGENTS);
     setReservations(INITIAL_RESERVATIONS);
     setRentals(INITIAL_RENTALS);
+    setMovements(INITIAL_MOVEMENTS);
     notify('Datos reiniciados al catálogo demo inicial con llaves y alarmas', 'info');
   };
 
@@ -547,6 +715,18 @@ export const RealEstateProvider = ({ children }) => {
         agents,
         reservations,
         rentals,
+        movements,
+        brokers,
+        currentUser,
+        isAdmin,
+        adminAccount,
+        login,
+        logout,
+        updateAdminAccount,
+        addMovement,
+        updateMovement,
+        deleteMovement,
+        toggleAgencyShareSettled,
         isAgentMode,
         setIsAgentMode,
         currentView,

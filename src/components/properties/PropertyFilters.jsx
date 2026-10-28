@@ -131,9 +131,12 @@ export const PropertyFilters = ({
             <option value="Todos">Todos los tipos</option>
             <option value="Casa">Casas</option>
             <option value="Departamento">Departamentos</option>
+            <option value="Dúplex">Dúplex</option>
             <option value="PH">PHs</option>
             <option value="Terreno">Terrenos / Lotes</option>
-            <option value="Local">Locales / Oficinas</option>
+            <option value="Local">Locales / Comercios</option>
+            <option value="Campo">Campos</option>
+            <option value="Otro">Otros (complejos, en pozo)</option>
           </select>
         </div>
 

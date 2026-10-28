@@ -9,6 +9,8 @@ import { ReservationList } from './components/reservations/ReservationList';
 import { RentalList } from './components/rentals/RentalList';
 import { KeyBoardOverview } from './components/keys/KeyBoardOverview';
 import { AgentDirectory } from './components/agents/AgentDirectory';
+import { FinanceView } from './components/finance/FinanceView';
+import { LoginScreen } from './components/auth/LoginScreen';
 import { PropertyDetailModal } from './components/properties/PropertyDetailModal';
 import { PropertyFormModal } from './components/properties/PropertyFormModal';
 import { ReservationModal } from './components/reservations/ReservationModal';
@@ -18,7 +20,9 @@ import { DataBackupModal } from './components/common/DataBackupModal';
 import { CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 
 const MainAppContent = () => {
-  const { currentView, toastMessage } = useRealEstate();
+  const { currentView, toastMessage, currentUser } = useRealEstate();
+
+  if (!currentUser) return <LoginScreen />;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -37,6 +41,7 @@ const MainAppContent = () => {
           {currentView === 'rentals' && <RentalList />}
           {currentView === 'keys' && <KeyBoardOverview />}
           {currentView === 'agents' && <AgentDirectory />}
+          {currentView === 'finance' && <FinanceView />}
         </main>
       </div>
 

@@ -10,6 +10,7 @@ import {
   ShieldCheck, 
   ExternalLink 
 } from 'lucide-react';
+import { photoOf } from '../../utils/placeholders';
 
 export const SharePropertyModal = () => {
   const { 
@@ -96,7 +97,7 @@ ${assignedAgent ? `${assignedAgent.name} (${assignedAgent.phone})` : 'Inmobiliar
           {/* Preview Card */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex gap-4">
             <img
-              src={prop.images[0]}
+              src={photoOf(prop)}
               alt=""
               className="w-20 h-20 rounded-xl object-cover shrink-0 border border-slate-200 shadow-sm"
             />

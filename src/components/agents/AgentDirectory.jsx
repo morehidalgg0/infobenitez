@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRealEstate } from '../../context/RealEstateContext';
+import { initialsAvatar } from '../../utils/placeholders';
 import { 
   Users, 
   Phone, 
@@ -12,7 +13,9 @@ import {
   X, 
   MessageSquare,
   Award,
-  Home
+  Home,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 
 export const AgentDirectory = () => {
@@ -22,8 +25,22 @@ export const AgentDirectory = () => {
     updateAgent, 
     deleteAgent, 
     properties,
-    setSelectedPropertyForDetail 
+    setSelectedPropertyForDetail,
+    isAdmin,
+    adminAccount,
+    updateAdminAccount,
+    notify
   } = useRealEstate();
+
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [adminForm, setAdminForm] = useState(adminAccount);
+
+  // Los usuarios no pueden repetirse entre brokers ni con la cuenta admin
+  const isUsernameTaken = (username, exceptAgentId) => {
+    const u = username.trim().toLowerCase();
+    if (exceptAgentId !== 'admin' && u === adminAccount.username.toLowerCase()) return true;
+    return agents.some(a => a.id !== exceptAgentId && a.username?.toLowerCase() === u);
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
@@ -32,7 +49,10 @@ export const AgentDirectory = () => {
     email: '',
     phone: '',
     role: 'Agente Inmobiliario',
-    avatar: ''
+    avatar: '',
+    username: '',
+    password: '',
+    agencySplitPercent: 50
   });
 
   const handleOpenCreate = () => {
@@ -42,7 +62,10 @@ export const AgentDirectory = () => {
       email: '',
       phone: '+54 9 11 ',
       role: 'Agente Inmobiliario',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'
+      avatar: '',
+      username: '',
+      password: '',
+      agencySplitPercent: 50
     });
     setIsModalOpen(true);
   };
@@ -54,7 +77,10 @@ export const AgentDirectory = () => {
       email: agent.email,
       phone: agent.phone,
       role: agent.role,
-      avatar: agent.avatar
+      avatar: agent.avatar?.startsWith('data:') ? '' : agent.avatar,
+      username: agent.username || '',
+      password: agent.password || '',
+      agencySplitPercent: agent.agencySplitPercent ?? 50
     });
     setIsModalOpen(true);
   };
@@ -62,11 +88,20 @@ export const AgentDirectory = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name) return;
+    if (!editingAgent?.isOwner && isUsernameTaken(formData.username, editingAgent?.id)) {
+      notify(`El usuario "${formData.username}" ya está en uso`, 'error');
+      return;
+    }
 
+    const data = {
+      ...formData,
+      username: formData.username.trim(),
+      agencySplitPercent: Number(formData.agencySplitPercent) || 0
+    };
     if (editingAgent) {
-      updateAgent(editingAgent.id, formData);
+      updateAgent(editingAgent.id, data);
     } else {
-      addAgent(formData);
+      addAgent(data);
     }
     setIsModalOpen(false);
   };
@@ -85,13 +120,24 @@ export const AgentDirectory = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-200 active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Agregar Agente</span>
-        </button>
+        {isAdmin && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => { setAdminForm(adminAccount); setIsAdminModalOpen(true); }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all"
+            >
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              <span>Cuenta Admin</span>
+            </button>
+            <button
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-md shadow-indigo-200 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar Agente</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Agents Grid */}
@@ -112,7 +158,7 @@ export const AgentDirectory = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3.5">
                     <img
-                      src={agent.avatar || "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=256&q=80"}
+                      src={agent.avatar || initialsAvatar(agent.name)}
                       alt={agent.name}
                       className="w-14 h-14 rounded-2xl object-cover shadow-sm border border-slate-200"
                     />
@@ -128,6 +174,7 @@ export const AgentDirectory = () => {
                     </div>
                   </div>
 
+                  {isAdmin && (
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleOpenEdit(agent)}
@@ -136,7 +183,7 @@ export const AgentDirectory = () => {
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
-                    {agents.length > 1 && (
+                    {agents.length > 1 && !agent.isOwner && (
                       <button
                         onClick={() => {
                           if (window.confirm(`¿Eliminar al agente ${agent.name}?`)) {
@@ -150,7 +197,22 @@ export const AgentDirectory = () => {
                       </button>
                     )}
                   </div>
+                  )}
                 </div>
+
+                {isAdmin && agent.isOwner && (
+                  <p className="mt-3 text-[11px] text-slate-500">Ingresa con la <strong className="text-slate-700">Cuenta Admin</strong>; sus ventas van a la caja de la inmobiliaria.</p>
+                )}
+                {isAdmin && !agent.isOwner && (
+                  <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      Usuario: <strong className="text-slate-700">{agent.username}</strong>
+                    </span>
+                    <span>·</span>
+                    <span>Inmobiliaria: <strong className="text-indigo-700">{agent.agencySplitPercent}%</strong> de sus honorarios</span>
+                  </div>
+                )}
 
                 {/* KPIs bar */}
                 <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-center mt-4">
@@ -286,6 +348,50 @@ export const AgentDirectory = () => {
                 />
               </div>
 
+              {!editingAgent?.isOwner && (
+              <div className="pt-3 border-t border-slate-100 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Acceso y comisiones</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Usuario *</label>
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      value={formData.username}
+                      onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
+                      placeholder="Ej. mgomez"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Contraseña *</label>
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      value={formData.password}
+                      onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">% de los honorarios de cada venta que corresponde a la inmobiliaria</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    required
+                    value={formData.agencySplitPercent}
+                    onChange={(e) => setFormData(p => ({ ...p, agencySplitPercent: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                  />
+                </div>
+              </div>
+              )}
+
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -299,6 +405,75 @@ export const AgentDirectory = () => {
                   className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200"
                 >
                   {editingAgent ? 'Guardar Cambios' : 'Agregar Agente'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cuenta del dueño / admin */}
+      {isAdminModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <h3 className="font-bold text-base text-slate-900">Cuenta del Dueño / Admin</h3>
+              <button onClick={() => setIsAdminModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isUsernameTaken(adminForm.username, 'admin')) {
+                  notify(`El usuario "${adminForm.username}" ya está en uso`, 'error');
+                  return;
+                }
+                updateAdminAccount({ ...adminForm, username: adminForm.username.trim() });
+                setIsAdminModalOpen(false);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Nombre visible</label>
+                <input
+                  type="text"
+                  required
+                  value={adminForm.name}
+                  onChange={(e) => setAdminForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Usuario</label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    value={adminForm.username}
+                    onChange={(e) => setAdminForm(p => ({ ...p, username: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Contraseña</label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    value={adminForm.password}
+                    onChange={(e) => setAdminForm(p => ({ ...p, password: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                  />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setIsAdminModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md shadow-indigo-200">
+                  Guardar
                 </button>
               </div>
             </form>

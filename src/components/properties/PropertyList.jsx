@@ -15,6 +15,7 @@ import {
   User,
   ArrowUpDown
 } from 'lucide-react';
+import { photoOf } from '../../utils/placeholders';
 
 export const PropertyList = () => {
   const { 
@@ -190,7 +191,7 @@ export const PropertyList = () => {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <img
-                            src={prop.images[0]}
+                            src={photoOf(prop)}
                             alt={prop.title}
                             className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-200"
                           />

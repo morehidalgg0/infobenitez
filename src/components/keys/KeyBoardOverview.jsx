@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
+import { photoOf } from '../../utils/placeholders';
 
 export const KeyBoardOverview = () => {
   const { 
@@ -158,7 +159,7 @@ export const KeyBoardOverview = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={prop.images[0]}
+                    src={photoOf(prop)}
                     alt=""
                     className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shrink-0"
                   />

@@ -12,6 +12,8 @@ Panel integral de gestión operativa y comercial para inmobiliarias, agentes de 
    - Filtros avanzados por barrios, rango de precios, ambientes y agente a cargo.
    - Vista en **Cuadrícula** y **Tabla compacta**.
 
+1b. **Cartera real**: 87 propiedades importadas del listado del 28-10-2026 (sin fotos: hay que cargarlas desde la ficha).
+
 2. **Descarga Directa de Fotografías**:
    - Descarga individual de cada foto en alta resolución.
    - Descarga en lote de todas las fotos de la propiedad para que los agentes las compartan directamente con clientes.
@@ -35,6 +37,14 @@ Panel integral de gestión operativa y comercial para inmobiliarias, agentes de 
    - Pase directo de Reserva a Venta o Alquiler con 1 clic.
    - Control de cobros mensuales y métodos de ajuste (IPC, ICL, Fijo USD).
    - Compartir ficha formateada por WhatsApp o imprimir en PDF.
+
+7. **Cuentas por Broker & Finanzas**:
+   - Cada broker inicia sesión con su propio usuario; el dueño/admin tiene una cuenta aparte.
+   - El admin registra ingresos y egresos propios de la inmobiliaria.
+   - Cada broker registra sus ingresos y egresos; en cada venta figura el desglose exacto: honorarios, **parte que corresponde a la inmobiliaria** (según el % que define el admin por broker) y neto del broker.
+   - El admin ve las ventas de todos los brokers, lo pendiente de rendir y marca cada venta como liquidada.
+   - Las contraseñas iniciales se entregan aparte (no se publican en el repositorio). Se cambian en *Equipo de Agentes* → editar agente / *Cuenta Admin*.
+   - ⚠️ Los datos y contraseñas se guardan en el navegador (LocalStorage): sirve para organizar al equipo, pero no es una seguridad real hasta conectar un backend.
 
 ---
 

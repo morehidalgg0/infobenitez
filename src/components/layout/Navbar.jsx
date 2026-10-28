@@ -10,7 +10,8 @@ import {
   Database, 
   Sparkles,
   CalendarClock,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -24,7 +25,10 @@ export const Navbar = () => {
     stats,
     reservations,
     rentals,
-    setCurrentView
+    setCurrentView,
+    currentUser,
+    isAdmin,
+    logout
   } = useRealEstate();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -158,13 +162,15 @@ export const Navbar = () => {
             </div>
 
             {/* Backup / Export Button */}
-            <button
-              onClick={() => setIsBackupModalOpen(true)}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              title="Copias de Seguridad y Datos"
-            >
-              <Database className="w-5 h-5" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsBackupModalOpen(true)}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                title="Copias de Seguridad y Datos"
+              >
+                <Database className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Add Property Button */}
             <button
@@ -174,6 +180,23 @@ export const Navbar = () => {
               <Plus className="w-4 h-4" />
               <span>Nueva Propiedad</span>
             </button>
+
+            {/* Usuario logueado */}
+            <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {isAdmin ? 'Dueño / Admin' : 'Broker'}
+                </p>
+              </div>
+              <button
+                onClick={logout}
+                className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
 
           </div>
 

@@ -368,9 +368,12 @@ export const PropertyFormModal = () => {
                   >
                     <option value="Casa">Casa</option>
                     <option value="Departamento">Departamento</option>
+                    <option value="Dúplex">Dúplex</option>
                     <option value="PH">PH</option>
                     <option value="Terreno">Terreno / Lote</option>
-                    <option value="Local">Local / Oficina</option>
+                    <option value="Local">Local / Comercio</option>
+                    <option value="Campo">Campo</option>
+                    <option value="Otro">Otro</option>
                   </select>
                 </div>
               </div>

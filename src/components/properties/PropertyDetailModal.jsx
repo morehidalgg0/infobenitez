@@ -35,6 +35,7 @@ import {
   Info,
   Copy
 } from 'lucide-react';
+import { photoOf } from '../../utils/placeholders';
 
 export const PropertyDetailModal = () => {
   const { 
@@ -297,7 +298,7 @@ export const PropertyDetailModal = () => {
                 {/* Hero Photo with overlay badges */}
                 <div className="aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-900 relative shadow-inner">
                   <img
-                    src={prop.images[activeImageIndex] || prop.images[0]}
+                    src={photoOf(prop, activeImageIndex)}
                     alt={prop.title}
                     className="w-full h-full object-cover"
                   />

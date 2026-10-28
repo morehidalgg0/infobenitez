@@ -15,6 +15,7 @@ import {
   Percent,
   MapPin
 } from 'lucide-react';
+import { photoOf } from '../../utils/placeholders';
 
 export const PropertyCard = ({ property }) => {
   const { 
@@ -37,7 +38,7 @@ export const PropertyCard = ({ property }) => {
       <div>
         <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
           <img
-            src={property.images[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"}
+            src={photoOf(property)}
             alt={property.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

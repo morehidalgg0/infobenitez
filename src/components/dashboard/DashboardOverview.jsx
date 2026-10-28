@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Clock
 } from 'lucide-react';
+import { photoOf, initialsAvatar } from '../../utils/placeholders';
 
 export const DashboardOverview = () => {
   const { 
@@ -235,7 +236,7 @@ export const DashboardOverview = () => {
                 <div>
                   <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
                     <img
-                      src={prop.images[0]}
+                      src={photoOf(prop)}
                       alt={prop.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -371,7 +372,7 @@ export const DashboardOverview = () => {
                 return (
                   <div key={ag.id} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2.5">
-                      <img src={ag.avatar} alt={ag.name} className="w-7 h-7 rounded-full object-cover" />
+                      <img src={ag.avatar || initialsAvatar(ag.name)} alt={ag.name} className="w-7 h-7 rounded-full object-cover" />
                       <div>
                         <p className="font-semibold text-slate-800">{ag.name}</p>
                         <p className="text-[10px] text-slate-500">{ag.role}</p>

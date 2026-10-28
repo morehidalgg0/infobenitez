@@ -10,7 +10,8 @@ import {
   Users, 
   HardDriveDownload,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Wallet
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -19,7 +20,8 @@ export const Sidebar = () => {
     setCurrentView, 
     stats, 
     isAgentMode, 
-    setIsBackupModalOpen 
+    setIsBackupModalOpen,
+    isAdmin
   } = useRealEstate();
 
   const navItems = [
@@ -63,6 +65,12 @@ export const Sidebar = () => {
       icon: Key,
       badge: stats.keysCheckedOutCount > 0 ? `${stats.keysCheckedOutCount} en uso` : null,
       badgeColor: 'bg-amber-100 text-amber-900 font-bold'
+    },
+    {
+      id: 'finance',
+      label: isAdmin ? 'Ingresos & Egresos' : 'Mis Ingresos & Egresos',
+      icon: Wallet,
+      badge: null
     },
     {
       id: 'agents',
@@ -111,7 +119,8 @@ export const Sidebar = () => {
           </nav>
         </div>
 
-        {/* Quick Tools */}
+        {/* Quick Tools (solo administración: el respaldo incluye cuentas y finanzas) */}
+        {isAdmin && (
         <div>
           <p className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
             Herramientas & Datos
@@ -126,6 +135,7 @@ export const Sidebar = () => {
             </button>
           </nav>
         </div>
+        )}
       </div>
 
       {/* Mode Status Card at Bottom */}
