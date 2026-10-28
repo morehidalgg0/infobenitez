@@ -7,14 +7,25 @@ const RealEstateContext = createContext();
 const STORAGE_KEYS = {
   // v3: datos reales de Benitez Inmobiliaria (reemplazan la demo)
   PROPERTIES: 'inmopanel_properties_v3',
-  AGENTS: 'inmopanel_agents_v3',
+  // agents v4 / admin v3 / session v3: descartan contraseñas guardadas por versiones anteriores
+  AGENTS: 'inmopanel_agents_v4',
   RESERVATIONS: 'inmopanel_reservations_v3',
   RENTALS: 'inmopanel_rentals_v3',
   AGENT_MODE: 'inmopanel_agent_mode_v2',
-  ADMIN: 'inmopanel_admin_v2',
+  ADMIN: 'inmopanel_admin_v3',
   MOVEMENTS: 'inmopanel_movements_v2',
-  SESSION: 'inmopanel_session_v2'
+  SESSION: 'inmopanel_session_v3'
 };
+
+// Borra claves de versiones anteriores que guardaban contraseñas
+['inmopanel_agents_v2', 'inmopanel_agents_v3', 'inmopanel_admin_v1', 'inmopanel_admin_v2', 'inmopanel_session_v1', 'inmopanel_session_v2']
+  .forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Sin acceso a localStorage: no hay nada que limpiar
+    }
+  });
 
 export const ADMIN_USER_ID = 'admin';
 
