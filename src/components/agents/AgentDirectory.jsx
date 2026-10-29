@@ -29,11 +29,12 @@ export const AgentDirectory = () => {
     isAdmin,
     adminAccount,
     updateAdminAccount,
+    setAgentCredentials,
     notify
   } = useRealEstate();
 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [adminForm, setAdminForm] = useState(adminAccount);
+  const [adminForm, setAdminForm] = useState({ ...adminAccount, password: '' });
 
   // Los usuarios no pueden repetirse entre brokers ni con la cuenta admin
   const isUsernameTaken = (username, exceptAgentId) => {
@@ -79,13 +80,13 @@ export const AgentDirectory = () => {
       role: agent.role,
       avatar: agent.avatar?.startsWith('data:') ? '' : agent.avatar,
       username: agent.username || '',
-      password: agent.password || '',
+      password: '',
       agencySplitPercent: agent.agencySplitPercent ?? 50
     });
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name) return;
     if (!editingAgent?.isOwner && isUsernameTaken(formData.username, editingAgent?.id)) {
@@ -93,17 +94,25 @@ export const AgentDirectory = () => {
       return;
     }
 
-    const data = {
+    // Usuario y contraseña se guardan aparte, en el servidor
+    const { username, password, ...data } = {
       ...formData,
       username: formData.username.trim(),
       agencySplitPercent: Number(formData.agencySplitPercent) || 0
     };
+    let agentId = editingAgent?.id;
     if (editingAgent) {
-      updateAgent(editingAgent.id, data);
+      updateAgent(agentId, data);
     } else {
-      addAgent(data);
+      agentId = addAgent(data).id;
     }
     setIsModalOpen(false);
+
+    const isOwner = editingAgent?.isOwner;
+    const credentialsChanged = username !== (editingAgent?.username || '') || password;
+    if (!isOwner && credentialsChanged) {
+      await setAgentCredentials(agentId, { username, password });
+    }
   };
 
   return (
@@ -123,7 +132,7 @@ export const AgentDirectory = () => {
         {isAdmin && (
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => { setAdminForm(adminAccount); setIsAdminModalOpen(true); }}
+              onClick={() => { setAdminForm({ ...adminAccount, password: '' }); setIsAdminModalOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all"
             >
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
@@ -211,6 +220,11 @@ export const AgentDirectory = () => {
                     </span>
                     <span>·</span>
                     <span>Inmobiliaria: <strong className="text-indigo-700">{agent.agencySplitPercent}%</strong> de sus honorarios</span>
+                    {!agent.hasPassword && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
+                        Sin contraseña: no puede ingresar
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -360,16 +374,17 @@ export const AgentDirectory = () => {
                       autoComplete="off"
                       value={formData.username}
                       onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
-                      placeholder="Ej. mgomez"
+                      placeholder="Ej. shidalgo"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 font-semibold mb-1">Contraseña *</label>
+                    <label className="block text-slate-700 font-semibold mb-1">Contraseña</label>
                     <input
-                      type="text"
-                      required
-                      autoComplete="off"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={editingAgent?.hasPassword ? 'Dejar vacío para no cambiarla' : 'Mínimo 6 caracteres'}
+                      minLength={6}
                       value={formData.password}
                       onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
@@ -429,8 +444,8 @@ export const AgentDirectory = () => {
                   notify(`El usuario "${adminForm.username}" ya está en uso`, 'error');
                   return;
                 }
-                updateAdminAccount({ ...adminForm, username: adminForm.username.trim() });
-                setIsAdminModalOpen(false);
+                updateAdminAccount({ name: adminForm.name, username: adminForm.username.trim(), password: adminForm.password })
+                  .then(ok => { if (ok) setIsAdminModalOpen(false); });
               }}
               className="space-y-3 text-xs"
             >
@@ -459,9 +474,10 @@ export const AgentDirectory = () => {
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Contraseña</label>
                   <input
-                    type="text"
-                    required
-                    autoComplete="off"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    placeholder="Dejar vacío para no cambiarla"
                     value={adminForm.password}
                     onChange={(e) => setAdminForm(p => ({ ...p, password: e.target.value }))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"

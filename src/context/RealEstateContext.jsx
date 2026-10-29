@@ -1,145 +1,90 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_PROPERTIES, INITIAL_AGENTS, INITIAL_RESERVATIONS, INITIAL_RENTALS, INITIAL_ADMIN, INITIAL_MOVEMENTS } from '../data/initialData';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { INITIAL_PROPERTIES, INITIAL_AGENTS, INITIAL_RESERVATIONS, INITIAL_RENTALS, INITIAL_MOVEMENTS } from '../data/initialData';
 import { initialsAvatar } from '../utils/placeholders';
+import { calcSaleSplit } from '../utils/saleSplit';
 
 const RealEstateContext = createContext();
 
-const STORAGE_KEYS = {
-  // v3: datos reales de Benitez Inmobiliaria (reemplazan la demo)
-  PROPERTIES: 'inmopanel_properties_v3',
-  AGENTS: 'inmopanel_agents_v3',
-  RESERVATIONS: 'inmopanel_reservations_v3',
-  RENTALS: 'inmopanel_rentals_v3',
-  AGENT_MODE: 'inmopanel_agent_mode_v2',
-  ADMIN: 'inmopanel_admin_v2',
-  MOVEMENTS: 'inmopanel_movements_v2',
-  SESSION: 'inmopanel_session_v2'
-};
+// Preferencia local de cada navegador; todo lo demás vive en la base de datos
+const AGENT_MODE_KEY = 'inmopanel_agent_mode_v2';
+
+// Borra datos de versiones anteriores, que guardaban todo (incluidas contraseñas) en el navegador
+try {
+  Object.keys(localStorage)
+    .filter(key => key.startsWith('inmopanel_') && key !== AGENT_MODE_KEY)
+    .forEach(key => localStorage.removeItem(key));
+} catch {
+  // Sin acceso a localStorage: no hay nada que limpiar
+}
 
 export const ADMIN_USER_ID = 'admin';
 
-// Calcula honorarios de una venta y la parte exacta que corresponde a la inmobiliaria
-export const calcSaleSplit = (salePrice, commissionPercent, agencySplitPercent) => {
-  const round2 = (n) => Math.round(n * 100) / 100;
-  const commissionTotal = round2((Number(salePrice) || 0) * (Number(commissionPercent) || 0) / 100);
-  const agencyShare = round2(commissionTotal * (Number(agencySplitPercent) || 0) / 100);
-  return { commissionTotal, agencyShare, brokerShare: round2(commissionTotal - agencyShare) };
+export { calcSaleSplit };
+
+const COLLECTIONS = ['properties', 'agents', 'reservations', 'rentals', 'movements'];
+
+const api = async (path, options = {}) => {
+  const res = await fetch(`/api/${path}`, {
+    credentials: 'same-origin',
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || `Error ${res.status}`), { status: res.status });
+  return body;
 };
 
-// Completa credenciales en agentes guardados antes de que existiera el login
-const withAgentDefaults = (agent) => {
-  const seed = INITIAL_AGENTS.find(a => a.id === agent.id);
-  if (agent.isOwner) return { ...agent, avatar: agent.avatar || initialsAvatar(agent.name) };
-  return {
-    ...agent,
-    avatar: agent.avatar || initialsAvatar(agent.name),
-    username: agent.username || seed?.username || agent.email?.split('@')[0] || agent.id,
-    password: agent.password || seed?.password || '1234',
-    agencySplitPercent: agent.agencySplitPercent ?? seed?.agencySplitPercent ?? 50
-  };
-};
+// Ensure security and key custody defaults exist
+const withPropertyDefaults = (p) => ({
+  ...p,
+  agentData: {
+    ...p.agentData,
+    security: p.agentData?.security || {
+      alarmCode: '',
+      alarmCompany: '',
+      gateCode: '',
+      lockboxCode: '',
+      wifiPassword: ''
+    },
+    keyCustody: p.agentData?.keyCustody || {
+      status: 'en_oficina',
+      currentHolder: p.agentData?.keyLocation || 'Oficina Central',
+      takenAt: null,
+      history: []
+    },
+    houseManual: p.agentData?.houseManual || ''
+  }
+});
+
+const withAgentDefaults = (agent) => ({
+  ...agent,
+  avatar: agent.avatar || initialsAvatar(agent.name),
+  ...(agent.isOwner ? {} : { agencySplitPercent: agent.agencySplitPercent ?? 50 })
+});
 
 export const RealEstateProvider = ({ children }) => {
-  // Load initial state from LocalStorage or fall back to mock data
-  const [properties, setProperties] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROPERTIES);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Ensure security and key custody defaults exist
-        return parsed.map(p => ({
-          ...p,
-          agentData: {
-            ...p.agentData,
-            security: p.agentData?.security || {
-              alarmCode: '',
-              alarmCompany: '',
-              gateCode: '',
-              lockboxCode: '',
-              wifiPassword: ''
-            },
-            keyCustody: p.agentData?.keyCustody || {
-              status: 'en_oficina',
-              currentHolder: p.agentData?.keyLocation || 'Oficina Central',
-              takenAt: null,
-              history: []
-            },
-            houseManual: p.agentData?.houseManual || ''
-          }
-        }));
-      }
-      return INITIAL_PROPERTIES;
-    } catch {
-      return INITIAL_PROPERTIES;
-    }
-  });
+  const [properties, setProperties] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [rentals, setRentals] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [adminAccount, setAdminAccount] = useState({ name: '', username: '' });
 
-  const [agents, setAgents] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.AGENTS);
-      return (saved ? JSON.parse(saved) : INITIAL_AGENTS).map(withAgentDefaults);
-    } catch {
-      return INITIAL_AGENTS;
-    }
-  });
-
-  const [reservations, setReservations] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.RESERVATIONS);
-      return saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
-    } catch {
-      return INITIAL_RESERVATIONS;
-    }
-  });
-
-  const [rentals, setRentals] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.RENTALS);
-      return saved ? JSON.parse(saved) : INITIAL_RENTALS;
-    } catch {
-      return INITIAL_RENTALS;
-    }
-  });
-
-  const [adminAccount, setAdminAccount] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.ADMIN);
-      return saved ? JSON.parse(saved) : INITIAL_ADMIN;
-    } catch {
-      return INITIAL_ADMIN;
-    }
-  });
-
-  const [movements, setMovements] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.MOVEMENTS);
-      return saved ? JSON.parse(saved) : INITIAL_MOVEMENTS;
-    } catch {
-      return INITIAL_MOVEMENTS;
-    }
-  });
-
-  // Sesión: { role: 'admin' } | { role: 'broker', agentId }
-  const [session, setSession] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.SESSION);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // Usuario de la sesión (lo informa el servidor) y estado de carga inicial
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Presentation Mode vs Agent Mode
   const [isAgentMode, setIsAgentMode] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.AGENT_MODE);
+      const saved = localStorage.getItem(AGENT_MODE_KEY);
       return saved !== null ? JSON.parse(saved) : true;
     } catch {
       return true;
     }
   });
 
-  // Active view in app: 'dashboard' | 'properties' | 'reservations' | 'rentals' | 'calendar' | 'keys' | 'agents'
+  // Active view in app: 'dashboard' | 'properties' | 'reservations' | 'rentals' | 'calendar' | 'keys' | 'agents' | 'finance'
   const [currentView, setCurrentView] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -156,84 +101,13 @@ export const RealEstateProvider = ({ children }) => {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Persistence to LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(properties));
-    } catch (e) {
-      console.error('Error saving properties to localStorage', e);
-    }
-  }, [properties]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.AGENTS, JSON.stringify(agents));
-    } catch (e) {
-      console.error('Error saving agents to localStorage', e);
-    }
-  }, [agents]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations));
-    } catch (e) {
-      console.error('Error saving reservations to localStorage', e);
-    }
-  }, [reservations]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.RENTALS, JSON.stringify(rentals));
-    } catch (e) {
-      console.error('Error saving rentals to localStorage', e);
-    }
-  }, [rentals]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.AGENT_MODE, JSON.stringify(isAgentMode));
+      localStorage.setItem(AGENT_MODE_KEY, JSON.stringify(isAgentMode));
     } catch (e) {
       console.error('Error saving agent mode state', e);
     }
   }, [isAgentMode]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ADMIN, JSON.stringify(adminAccount));
-    } catch (e) {
-      console.error('Error saving admin account', e);
-    }
-  }, [adminAccount]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
-    } catch (e) {
-      console.error('Error saving movements to localStorage', e);
-    }
-  }, [movements]);
-
-  useEffect(() => {
-    try {
-      if (session) localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
-      else localStorage.removeItem(STORAGE_KEYS.SESSION);
-    } catch (e) {
-      console.error('Error saving session', e);
-    }
-  }, [session]);
-
-  // Usuario logueado (null si la sesión apunta a un broker eliminado)
-  const currentUser = (() => {
-    if (!session) return null;
-    if (session.role === 'admin') {
-      return { id: ADMIN_USER_ID, role: 'admin', name: adminAccount.name, username: adminAccount.username };
-    }
-    const agent = agents.find(a => a.id === session.agentId && !a.isOwner);
-    return agent ? { id: agent.id, role: 'broker', name: agent.name, username: agent.username, avatar: agent.avatar, agencySplitPercent: agent.agencySplitPercent } : null;
-  })();
-  const isAdmin = currentUser?.role === 'admin';
-  // Brokers con cuenta propia (la dueña opera con la cuenta admin)
-  const brokers = agents.filter(a => !a.isOwner);
 
   // Helper notification toast
   const notify = (text, type = 'info') => {
@@ -243,32 +117,169 @@ export const RealEstateProvider = ({ children }) => {
     }, 4000);
   };
 
-  // AUTH
-  const login = (username, password) => {
-    const user = username.trim().toLowerCase();
-    if (user === adminAccount.username.toLowerCase() && password === adminAccount.password) {
-      setSession({ role: 'admin' });
-      setCurrentView('dashboard');
-      return true;
-    }
-    const agent = agents.find(a => !a.isOwner && a.username?.toLowerCase() === user && a.password === password);
-    if (agent) {
-      setSession({ role: 'broker', agentId: agent.id });
-      setCurrentView('dashboard');
-      return true;
-    }
-    return false;
+  // SINCRONIZACIÓN CON LA BASE DE DATOS
+  // baselines: lo último que coincide con el servidor, por colección (id -> JSON).
+  // Cada cambio de estado se compara contra eso y se envían solo los registros que cambiaron.
+  const baselines = useRef({});
+  const saveQueue = useRef(Promise.resolve());
+  const pendingSaves = useRef(0);
+
+  // Encola llamadas que modifican datos, para que lleguen al servidor en orden
+  const enqueue = (fn) => {
+    pendingSaves.current += 1;
+    const run = saveQueue.current.then(fn).finally(() => { pendingSaves.current -= 1; });
+    saveQueue.current = run.catch(() => {});
+    return run;
   };
 
-  const logout = () => {
-    setSession(null);
+  const setBaseline = (name, list) => {
+    baselines.current[name] = new Map(list.map(item => [item.id, JSON.stringify(item)]));
+  };
+
+  const clearData = () => {
+    baselines.current = {};
+    setCurrentUser(null);
+    setProperties([]);
+    setAgents([]);
+    setReservations([]);
+    setRentals([]);
+    setMovements([]);
     setSelectedPropertyForDetail(null);
+  };
+
+  const loadData = async () => {
+    const data = await api('data');
+    const lists = {
+      properties: data.properties.map(withPropertyDefaults),
+      agents: data.agents.map(withAgentDefaults),
+      reservations: data.reservations,
+      rentals: data.rentals,
+      movements: data.movements
+    };
+    // La línea base va antes del setState, así la carga no se reenvía al servidor
+    COLLECTIONS.forEach(name => setBaseline(name, lists[name]));
+    setProperties(lists.properties);
+    setAgents(lists.agents);
+    setReservations(lists.reservations);
+    setRentals(lists.rentals);
+    setMovements(lists.movements);
+    if (data.admin) setAdminAccount(data.admin);
+    setCurrentUser(data.user);
+  };
+
+  const handleSaveError = (e) => {
+    if (e.status === 401) {
+      clearData();
+      notify('Tu sesión venció. Ingresá de nuevo.', 'error');
+      return;
+    }
+    notify(`No se pudo guardar: ${e.message}`, 'error');
+    // Vuelve a lo que realmente quedó guardado
+    loadData().catch(() => {});
+  };
+
+  const syncCollection = (name, list) => {
+    const base = baselines.current[name];
+    if (!base) return;
+    const seen = new Set();
+    const upserts = [];
+    for (const item of list) {
+      seen.add(item.id);
+      if (base.get(item.id) !== JSON.stringify(item)) upserts.push(item);
+    }
+    const deletes = [...base.keys()].filter(id => !seen.has(id));
+    if (upserts.length === 0 && deletes.length === 0) return;
+    setBaseline(name, list);
+    enqueue(() => api('data', { method: 'POST', body: JSON.stringify({ collection: name, upserts, deletes }) }))
+      .catch(handleSaveError);
+  };
+
+  useEffect(() => { syncCollection('properties', properties); }, [properties]);
+  useEffect(() => { syncCollection('agents', agents); }, [agents]);
+  useEffect(() => { syncCollection('reservations', reservations); }, [reservations]);
+  useEffect(() => { syncCollection('rentals', rentals); }, [rentals]);
+  useEffect(() => { syncCollection('movements', movements); }, [movements]);
+
+  // Al abrir: si ya hay sesión, carga los datos
+  useEffect(() => {
+    api('auth?action=me')
+      .then(({ user }) => (user ? loadData() : null))
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  // Trae los cambios del resto del equipo cada minuto y al volver a la pestaña
+  useEffect(() => {
+    if (!currentUser) return;
+    const refresh = () => {
+      if (pendingSaves.current === 0) loadData().catch(e => { if (e.status === 401) clearData(); });
+    };
+    const interval = setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [currentUser?.id]);
+
+  const isAdmin = currentUser?.role === 'admin';
+  // Brokers con cuenta propia (la dueña opera con la cuenta admin)
+  const brokers = agents.filter(a => !a.isOwner);
+
+  // AUTH
+  const login = async (username, password) => {
+    try {
+      await api('auth?action=login', { method: 'POST', body: JSON.stringify({ username, password }) });
+      await loadData();
+      setCurrentView('dashboard');
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.status === 401 ? 'Usuario o contraseña incorrectos.' : `No se pudo ingresar: ${e.message}` };
+    }
+  };
+
+  const logout = async () => {
+    await saveQueue.current;
+    try {
+      await api('auth?action=logout', { method: 'POST', body: '{}' });
+    } catch {
+      // Igual se limpia la sesión local
+    }
+    clearData();
     setCurrentView('dashboard');
   };
 
-  const updateAdminAccount = (fields) => {
-    setAdminAccount(prev => ({ ...prev, ...fields }));
-    notify('Cuenta de administración actualizada', 'success');
+  // Cuentas de acceso (solo administración). password vacío = no cambiarla.
+  const updateAdminAccount = async (fields) => {
+    try {
+      const result = await enqueue(() => api('users', { method: 'POST', body: JSON.stringify({ target: 'admin', ...fields }) }));
+      setAdminAccount({ name: fields.name, username: result.username });
+      setCurrentUser(prev => prev && { ...prev, name: fields.name, username: result.username });
+      notify('Cuenta de administración actualizada', 'success');
+      return true;
+    } catch (e) {
+      notify(e.message, 'error');
+      return false;
+    }
+  };
+
+  const setAgentCredentials = async (agentId, { username, password }) => {
+    try {
+      const result = await enqueue(() => api('users', { method: 'POST', body: JSON.stringify({ target: agentId, username, password }) }));
+      const patch = { username: result.username, hasPassword: result.hasPassword };
+      // Usuario y contraseña viven en el servidor: se actualiza la ficha sin reenviarla
+      const base = baselines.current.agents;
+      setAgents(prev => prev.map(a => {
+        if (a.id !== agentId) return a;
+        const updated = { ...a, ...patch };
+        base?.set(a.id, JSON.stringify(updated));
+        return updated;
+      }));
+      return true;
+    } catch (e) {
+      notify(e.message, 'error');
+      return false;
+    }
   };
 
   // FINANZAS: ingresos y egresos
@@ -667,7 +678,6 @@ export const RealEstateProvider = ({ children }) => {
       if (data.reservations) setReservations(data.reservations);
       if (data.rentals) setRentals(data.rentals);
       if (data.movements) setMovements(data.movements);
-      if (data.adminAccount) setAdminAccount(data.adminAccount);
       notify('Datos restaurados correctamente desde el respaldo', 'success');
       return true;
     } catch (e) {
@@ -678,8 +688,8 @@ export const RealEstateProvider = ({ children }) => {
   };
 
   const resetToDemoData = () => {
-    setProperties(INITIAL_PROPERTIES);
-    setAgents(INITIAL_AGENTS);
+    setProperties(INITIAL_PROPERTIES.map(withPropertyDefaults));
+    setAgents(INITIAL_AGENTS.map(withAgentDefaults));
     setReservations(INITIAL_RESERVATIONS);
     setRentals(INITIAL_RENTALS);
     setMovements(INITIAL_MOVEMENTS);
@@ -721,6 +731,8 @@ export const RealEstateProvider = ({ children }) => {
         isAdmin,
         adminAccount,
         login,
+        authChecked,
+        setAgentCredentials,
         logout,
         updateAdminAccount,
         addMovement,

@@ -5,9 +5,11 @@
 export const INITIAL_ADMIN = {
   name: "Natalia Benitez",
   username: "admin",
-  password: "vghy7ya6"
+  // Sin contraseña: se crea en el primer ingreso
+  password: ""
 };
 
+// Los brokers no tienen contraseña hasta que la administración se la asigna en Equipo de Agentes.
 // isOwner: la dueña figura como agente para tener propiedades asignadas, pero ingresa con la cuenta admin
 export const INITIAL_AGENTS = [
   {
@@ -19,7 +21,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "shidalgo",
-    "password": "fbmu8dju",
     "agencySplitPercent": 50
   },
   {
@@ -31,7 +32,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "elacoste",
-    "password": "tbdfushj",
     "agencySplitPercent": 50
   },
   {
@@ -53,7 +53,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "aaguayo",
-    "password": "vtmkjpdv",
     "agencySplitPercent": 50
   },
   {
@@ -65,7 +64,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "lgascon",
-    "password": "6mt5etud",
     "agencySplitPercent": 50
   },
   {
@@ -77,7 +75,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "chidalgo",
-    "password": "b7p7rsyp",
     "agencySplitPercent": 50
   },
   {
@@ -89,7 +86,6 @@ export const INITIAL_AGENTS = [
     "role": "Broker",
     "avatar": "",
     "username": "jfabbri",
-    "password": "322exsg2",
     "agencySplitPercent": 50
   }
 ];

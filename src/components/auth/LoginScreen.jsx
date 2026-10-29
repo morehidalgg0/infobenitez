@@ -7,12 +7,14 @@ export const LoginScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!login(username, password)) {
-      setError('Usuario o contraseña incorrectos.');
-    }
+    setIsSubmitting(true);
+    const result = await login(username, password);
+    setIsSubmitting(false);
+    if (!result.ok) setError(result.error);
   };
 
   return (
@@ -39,9 +41,10 @@ export const LoginScreen = () => {
                 required
                 autoFocus
                 autoComplete="username"
+                autoCapitalize="none"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(''); }}
-                placeholder="Ej. mgomez"
+                placeholder="Ej. shidalgo"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pl-9 font-medium text-sm"
               />
             </div>
@@ -71,10 +74,11 @@ export const LoginScreen = () => {
 
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60"
           >
             <LogIn className="w-4 h-4" />
-            <span>Ingresar</span>
+            <span>{isSubmitting ? 'Ingresando…' : 'Ingresar'}</span>
           </button>
         </form>
 

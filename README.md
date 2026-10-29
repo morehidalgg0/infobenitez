@@ -43,10 +43,27 @@ Panel integral de gestión operativa y comercial para inmobiliarias, agentes de 
    - El admin registra ingresos y egresos propios de la inmobiliaria.
    - Cada broker registra sus ingresos y egresos; en cada venta figura el desglose exacto: honorarios, **parte que corresponde a la inmobiliaria** (según el % que define el admin por broker) y neto del broker.
    - El admin ve las ventas de todos los brokers, lo pendiente de rendir y marca cada venta como liquidada.
-   - Las contraseñas iniciales se entregan aparte (no se publican en el repositorio). Se cambian en *Equipo de Agentes* → editar agente / *Cuenta Admin*.
-   - ⚠️ Los datos y contraseñas se guardan en el navegador (LocalStorage): sirve para organizar al equipo, pero no es una seguridad real hasta conectar un backend.
+   - Sin contraseñas en el código: en el primer ingreso la dueña crea la contraseña de `admin`, y después asigna usuario y contraseña a cada broker en *Equipo de Agentes* (hasta entonces el broker no puede ingresar).
 
 ---
+
+## 🗄️ Base de datos (Neon) y Vercel
+
+Los datos y las cuentas se guardan en Postgres (Neon). La app usa funciones de Vercel en `api/`; las contraseñas se guardan cifradas (scrypt) y la sesión es una cookie segura.
+
+1. Crear `.env.local` (no se sube a git) con la conexión de Neon:
+   ```
+   DATABASE_URL=postgresql://...
+   ```
+2. Preparar la base (crea tablas, carga propiedades y equipo, y pide la contraseña de `admin`):
+   ```bash
+   npm run db:setup
+   ```
+   Para cambiar la contraseña de admin más adelante: `npm run db:setup -- --admin-password`
+3. En Vercel → Settings → Environment Variables, cargar la misma `DATABASE_URL` (si Neon está conectado desde Vercel, ya existe).
+4. Las contraseñas de los brokers las asigna la administración en *Equipo de Agentes*.
+
+En desarrollo, `npm run dev` también sirve las funciones de `api/` usando `.env.local`.
 
 ## 🚀 Instalación y Puesta en Marcha
 
@@ -75,4 +92,4 @@ npm run build
 - **Vite**
 - **Tailwind CSS**
 - **Lucide Icons**
-- **LocalStorage API** con persistencia y exportación/importación JSON.
+- **Postgres (Neon)** + funciones de Vercel, con exportación/importación JSON.
