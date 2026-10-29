@@ -19,7 +19,9 @@ export const ReservationModal = () => {
     setReservationTargetProperty,
     properties, 
     agents, 
-    addReservation 
+    addReservation,
+    setContractReservation,
+    isAdmin
   } = useRealEstate();
 
   // Available properties for reservation
@@ -93,7 +95,7 @@ export const ReservationModal = () => {
 
     const assignedAgent = agents.find(a => a.id === formData.agentId);
 
-    addReservation({
+    const reservation = addReservation({
       ...formData,
       propertyRef: targetProp.refCode,
       propertyTitle: targetProp.title,
@@ -102,6 +104,8 @@ export const ReservationModal = () => {
     });
 
     handleClose();
+    // Se genera el contrato de reserva; si reservó un broker, espera la aprobación del admin
+    if (isAdmin) setContractReservation(reservation);
   };
 
   return (

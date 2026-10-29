@@ -14,13 +14,32 @@ import {
   AlertTriangle,
   Building2,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from 'lucide-react';
+
+// Contrato de una reserva: aprobado (o reserva anterior a la aprobación) se puede generar;
+// las de brokers esperan que la administración lo autorice.
+const ContractButton = ({ onClick, children, tone = 'brand' }) => (
+  <button
+    onClick={onClick}
+    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs border transition-colors ${
+      tone === 'brand' ? 'bg-brand-50 hover:bg-brand-100 text-brand-700 border-brand-100'
+        : tone === 'ok' ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+          : 'bg-white hover:bg-rose-50 text-rose-700 border-rose-200'
+    }`}
+  >
+    {children}
+  </button>
+);
 
 export const ReservationList = () => {
   const { 
     reservations, 
     completeReservation, 
+    setContractReservation,
+    setContractApproval,
+    isAdmin,
     deleteReservation,
     setIsReservationModalOpen, 
     setSelectedPropertyForDetail,
@@ -28,6 +47,46 @@ export const ReservationList = () => {
     setRentalTargetProperty,
     setIsRentalModalOpen
   } = useRealEstate();
+
+  const renderContractAction = (res) => {
+    const status = res.contractStatus || 'aprobado';
+    if (status === 'aprobado') {
+      return (
+        <div className="flex">
+          <ContractButton onClick={() => setContractReservation(res)}>
+            <FileText className="w-3.5 h-3.5" /> Contrato de reserva
+          </ContractButton>
+        </div>
+      );
+    }
+    if (isAdmin) {
+      return (
+        <div className="space-y-1.5">
+          <p className={`text-[11px] font-semibold ${status === 'pendiente' ? 'text-amber-700' : 'text-rose-700'}`}>
+            {status === 'pendiente' ? `${res.agentName} pide autorización para el contrato` : 'Contrato rechazado'}
+          </p>
+          <div className="flex gap-1.5">
+            <ContractButton tone="ok" onClick={() => setContractApproval(res.id, true)}>
+              <CheckCircle2 className="w-3.5 h-3.5" /> Aprobar contrato
+            </ContractButton>
+            {status === 'pendiente' && (
+              <ContractButton tone="no" onClick={() => setContractApproval(res.id, false)}>
+                <XCircle className="w-3.5 h-3.5" /> Rechazar
+              </ContractButton>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border ${
+        status === 'pendiente' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+      }`}>
+        <Clock className="w-3.5 h-3.5" />
+        {status === 'pendiente' ? 'Contrato pendiente de aprobación' : 'La administración no autorizó el contrato'}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -189,6 +248,8 @@ export const ReservationList = () => {
                     <span>Agente a cargo: <strong>{res.agentName}</strong></span>
                     <span>Fecha reserva: {res.reservationDate}</span>
                   </div>
+
+                  {renderContractAction(res)}
                 </div>
 
                 {/* Operations / Actions for active reservations */}

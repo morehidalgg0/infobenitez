@@ -92,6 +92,16 @@ export default handle(async (req, res) => {
         delete data.hasPassword;
       }
 
+      if (collection === 'reservations' && !isAdmin) {
+        // La aprobación del contrato la decide solo la administración
+        const existing = await getExisting(data.id);
+        data = {
+          ...data,
+          contractStatus: existing ? (existing.data.contractStatus || 'aprobado') : 'pendiente',
+          createdBy: existing ? existing.data.createdBy : user.id
+        };
+      }
+
       if (collection === 'movements') {
         const existing = await getExisting(data.id);
         if (isAdmin) {

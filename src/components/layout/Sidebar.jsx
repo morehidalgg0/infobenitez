@@ -14,17 +14,10 @@ import {
   Wallet
 } from 'lucide-react';
 
-export const Sidebar = () => {
-  const { 
-    currentView, 
-    setCurrentView, 
-    stats, 
-    isAgentMode, 
-    setIsBackupModalOpen,
-    isAdmin
-  } = useRealEstate();
-
-  const navItems = [
+// Secciones del menú (las usa también la navegación del celular)
+export const useNavItems = () => {
+  const { stats, isAdmin } = useRealEstate();
+  return [
     {
       id: 'dashboard',
       label: 'Panel General',
@@ -49,8 +42,9 @@ export const Sidebar = () => {
       id: 'reservations',
       label: 'Reservas & Señas',
       icon: BookmarkCheck,
-      badge: stats.activeReservationsCount,
-      badgeColor: stats.urgentReservationsCount > 0 ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-slate-100 text-slate-700'
+      // Para la administración, se destacan los contratos que esperan aprobación
+      badge: isAdmin && stats.pendingContractsCount > 0 ? `${stats.pendingContractsCount} por aprobar` : stats.activeReservationsCount,
+      badgeColor: (isAdmin && stats.pendingContractsCount > 0) || stats.urgentReservationsCount > 0 ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-slate-100 text-slate-700'
     },
     {
       id: 'rentals',
@@ -79,6 +73,17 @@ export const Sidebar = () => {
       badge: null
     }
   ];
+};
+
+export const Sidebar = () => {
+  const { 
+    currentView, 
+    setCurrentView, 
+    isAgentMode, 
+    setIsBackupModalOpen,
+    isAdmin
+  } = useRealEstate();
+  const navItems = useNavItems();
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col justify-between p-4 shrink-0 h-[calc(100vh-4rem)] sticky top-16">

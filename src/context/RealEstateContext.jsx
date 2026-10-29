@@ -101,6 +101,7 @@ export const RealEstateProvider = ({ children }) => {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [soldPropertyForCommission, setSoldPropertyForCommission] = useState(null);
+  const [contractReservation, setContractReservation] = useState(null);
 
   useEffect(() => {
     try {
@@ -565,7 +566,10 @@ export const RealEstateProvider = ({ children }) => {
       reservationDate: resData.reservationDate || new Date().toISOString().split('T')[0],
       propertyPrice: targetProp ? targetProp.pricing.price : 0,
       status: 'Activa',
-      ...resData
+      ...resData,
+      // Si reserva un broker, la administración tiene que aprobar el contrato
+      contractStatus: isAdmin ? 'aprobado' : 'pendiente',
+      createdBy: currentUser?.id
     };
 
     setReservations(prev => [newReservation, ...prev]);
@@ -574,8 +578,16 @@ export const RealEstateProvider = ({ children }) => {
       changePropertyStatus(resData.propertyId, 'Reservada');
     }
 
-    notify('Reserva registrada exitosamente. La propiedad pasó a estado Reservada.', 'success');
+    notify(isAdmin
+      ? 'Reserva registrada. La propiedad pasó a estado Reservada.'
+      : 'Reserva registrada. El contrato queda pendiente de aprobación de la administración.', 'success');
     return newReservation;
+  };
+
+  const setContractApproval = (reservationId, approved) => {
+    if (!isAdmin) return;
+    setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, contractStatus: approved ? 'aprobado' : 'rechazado' } : r));
+    notify(approved ? 'Contrato aprobado: el broker ya puede generarlo' : 'Contrato rechazado', approved ? 'success' : 'info');
   };
 
   const updateReservation = (id, updatedFields) => {
@@ -711,6 +723,7 @@ export const RealEstateProvider = ({ children }) => {
     rentedCount: properties.filter(p => p.status === 'Alquilada').length,
     soldCount: properties.filter(p => p.status === 'Vendida').length,
     activeReservationsCount: reservations.filter(r => r.status === 'Activa' || r.status === 'En verificación').length,
+    pendingContractsCount: reservations.filter(r => r.contractStatus === 'pendiente' && r.status !== 'Cancelada').length,
     activeRentalsCount: rentals.length,
     keysCheckedOutCount: properties.filter(p => p.agentData?.keyCustody?.status === 'prestada').length,
     urgentReservationsCount: reservations.filter(r => {
@@ -778,6 +791,9 @@ export const RealEstateProvider = ({ children }) => {
         notify,
         soldPropertyForCommission,
         setSoldPropertyForCommission,
+        contractReservation,
+        setContractReservation,
+        setContractApproval,
         // Actions
         addProperty,
         updateProperty,

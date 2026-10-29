@@ -12,7 +12,8 @@ import {
   Sparkles,
   CalendarClock,
   ChevronDown,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -41,7 +42,12 @@ export const Navbar = () => {
     return diff <= 5 && diff >= 0;
   });
 
-  const totalAlerts = urgentReservations.length;
+  // Contratos de reservas de brokers que esperan la aprobación de la administración
+  const pendingContracts = isAdmin
+    ? reservations.filter(r => r.contractStatus === 'pendiente' && r.status !== 'Cancelada')
+    : [];
+
+  const totalAlerts = urgentReservations.length + pendingContracts.length;
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
@@ -120,13 +126,29 @@ export const Navbar = () => {
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-3 z-50">
                   <div className="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
-                    <span className="font-bold text-xs uppercase tracking-wider text-slate-700">Alertas de Vencimiento</span>
+                    <span className="font-bold text-xs uppercase tracking-wider text-slate-700">Alertas</span>
                     <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
                       {totalAlerts} pendientes
                     </span>
                   </div>
                   <div className="max-h-64 overflow-y-auto px-2 py-2 space-y-1.5">
-                    {urgentReservations.length === 0 ? (
+                    {pendingContracts.map(res => (
+                      <div
+                        key={`c-${res.id}`}
+                        onClick={() => {
+                          setCurrentView('reservations');
+                          setShowNotifications(false);
+                        }}
+                        className="p-2.5 rounded-xl hover:bg-brand-50 border border-transparent hover:border-brand-200 cursor-pointer transition-all"
+                      >
+                        <div className="flex items-center gap-2 text-xs font-semibold text-brand-800">
+                          <FileText className="w-4 h-4 text-brand-500 shrink-0" />
+                          <span>Contrato por aprobar: {res.propertyRef}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5">{res.agentName} · Cliente: {res.clientName}</p>
+                      </div>
+                    ))}
+                    {totalAlerts === 0 ? (
                       <p className="text-xs text-slate-500 p-3 text-center">No hay reservas ni vencimientos urgentes esta semana.</p>
                     ) : (
                       urgentReservations.map(res => (
