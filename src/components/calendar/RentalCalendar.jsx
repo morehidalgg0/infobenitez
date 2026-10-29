@@ -27,14 +27,24 @@ const WEEK_DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export const RentalCalendar = () => {
   const { 
-    properties, 
+    properties: allProperties, 
     rentals, 
-    reservations, 
+    reservations: allReservations, 
     setSelectedPropertyForDetail 
   } = useRealEstate();
 
-  // Current view year & month (Defaults to October 2026 based on system time)
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 9, 1)); // October 2026
+  // Solo alquileres: se dejan afuera las propiedades en venta y sus señas
+  const properties = useMemo(() => allProperties.filter(p => p.operationType !== 'Venta'), [allProperties]);
+  const reservations = useMemo(() => {
+    const rentalIds = new Set(properties.map(p => p.id));
+    return allReservations.filter(r => rentalIds.has(r.propertyId));
+  }, [allReservations, properties]);
+
+  // Mes actual al abrir
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState('ALL');
   const [selectedDayDetails, setSelectedDayDetails] = useState(null);
 
@@ -264,7 +274,7 @@ export const RentalCalendar = () => {
           onChange={(e) => setSelectedPropertyFilter(e.target.value)}
           className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-800 focus:outline-none focus:border-indigo-500 w-full sm:w-auto"
         >
-          <option value="ALL">Mostrar todas las propiedades</option>
+          <option value="ALL">Todos los alquileres</option>
           {properties.map(p => (
             <option key={p.id} value={p.id}>
               [{p.refCode}] {p.title} ({p.status} - {p.operationType})

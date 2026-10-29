@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_PROPERTIES, INITIAL_AGENTS, INITIAL_RESERVATIONS, INITIAL_RENTALS, INITIAL_MOVEMENTS } from '../data/initialData';
 import { initialsAvatar } from '../utils/placeholders';
-import { calcSaleSplit } from '../utils/saleSplit';
+import { calcSaleSplit, splitForMovement } from '../utils/saleSplit';
 
 const RealEstateContext = createContext();
 
@@ -100,6 +100,7 @@ export const RealEstateProvider = ({ children }) => {
   const [shareTargetProperty, setShareTargetProperty] = useState(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [soldPropertyForCommission, setSoldPropertyForCommission] = useState(null);
 
   useEffect(() => {
     try {
@@ -285,7 +286,7 @@ export const RealEstateProvider = ({ children }) => {
   // FINANZAS: ingresos y egresos
   const buildMovement = (data) => {
     if (data.kind !== 'venta') return { ...data, type: data.type, kind: 'general' };
-    const split = calcSaleSplit(data.salePrice, data.commissionPercent, data.agencySplitPercent);
+    const split = splitForMovement(data);
     return { ...data, type: 'ingreso', ...split, amount: split.commissionTotal };
   };
 
@@ -391,8 +392,14 @@ export const RealEstateProvider = ({ children }) => {
   };
 
   const changePropertyStatus = (id, newStatus) => {
+    const prop = properties.find(p => p.id === id);
     updateProperty(id, { status: newStatus });
     notify(`Estado cambiado a: ${newStatus}`, 'success');
+    // Al concretarse la venta se pide registrar la comisión, si todavía no está cargada
+    const alreadyRegistered = movements.some(m => m.kind === 'venta' && m.propertyId === id);
+    if (newStatus === 'Vendida' && prop && prop.status !== 'Vendida' && !alreadyRegistered) {
+      setSoldPropertyForCommission({ ...prop, status: newStatus });
+    }
   };
 
   // KEY CUSTODY ACTIONS (Critical agent feature)
@@ -769,6 +776,8 @@ export const RealEstateProvider = ({ children }) => {
         setIsBackupModalOpen,
         toastMessage,
         notify,
+        soldPropertyForCommission,
+        setSoldPropertyForCommission,
         // Actions
         addProperty,
         updateProperty,

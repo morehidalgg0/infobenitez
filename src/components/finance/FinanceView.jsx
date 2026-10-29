@@ -74,17 +74,24 @@ const MovementRow = ({ m, ownerName, canEdit, onEdit, onDelete, onToggleSettled 
           {isSale && (
             <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-2.5 text-[11px] space-y-1 max-w-md">
               <div className="flex justify-between gap-4 text-slate-600">
-                <span>Venta {formatMoney(m.salePrice, m.currency)} × {m.commissionPercent}%</span>
+                <span>
+                  Venta {formatMoney(m.salePrice, m.currency)}
+                  {m.commissionMode === 'amount' ? ` · honorarios acordados (${m.commissionPercent}%)` : ` × ${m.commissionPercent}%`}
+                </span>
                 <span className="font-semibold text-slate-800">{formatMoney(m.commissionTotal, m.currency)}</span>
               </div>
-              <div className="flex justify-between gap-4 text-indigo-800 font-bold">
-                <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> Corresponde a la inmobiliaria ({m.agencySplitPercent}%)</span>
-                <span>{formatMoney(m.agencyShare, m.currency)}</span>
-              </div>
-              <div className="flex justify-between gap-4 text-emerald-700 font-semibold">
-                <span>Neto broker</span>
-                <span>{formatMoney(m.brokerShare, m.currency)}</span>
-              </div>
+              {m.userId !== ADMIN_USER_ID && (
+                <>
+                  <div className="flex justify-between gap-4 text-indigo-800 font-bold">
+                    <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> Corresponde a la inmobiliaria ({m.agencySplitPercent}%)</span>
+                    <span>{formatMoney(m.agencyShare, m.currency)}</span>
+                  </div>
+                  <div className="flex justify-between gap-4 text-emerald-700 font-semibold">
+                    <span>Neto broker</span>
+                    <span>{formatMoney(m.brokerShare, m.currency)}</span>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {m.notes && <p className="text-[11px] text-slate-400 italic">{m.notes}</p>}
@@ -95,7 +102,7 @@ const MovementRow = ({ m, ownerName, canEdit, onEdit, onDelete, onToggleSettled 
         <p className={`text-sm font-extrabold ${m.type === 'ingreso' ? 'text-emerald-700' : 'text-rose-700'}`}>
           {m.type === 'ingreso' ? '+' : '−'} {formatMoney(m.amount, m.currency)}
         </p>
-        {isSale && (
+        {isSale && m.userId !== ADMIN_USER_ID && (
           onToggleSettled ? (
             <button onClick={() => onToggleSettled(m.id)} title="Marcar si la inmobiliaria ya cobró su parte">
               <SettledBadge settled={m.agencyShareSettled} />

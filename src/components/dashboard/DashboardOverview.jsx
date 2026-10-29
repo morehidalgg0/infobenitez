@@ -51,25 +51,25 @@ export const DashboardOverview = () => {
     <div className="space-y-6">
       
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+      <div className="bg-brand-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-brand-200 relative overflow-hidden">
+        <div className="absolute -right-6 -bottom-16 font-serif font-bold text-[16rem] leading-none text-white/10 pointer-events-none select-none">B</div>
         
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold mb-3 border border-indigo-400/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold uppercase tracking-[0.14em] mb-3 border border-white/30">
             <Building2 className="w-3.5 h-3.5" />
-            <span>Panel de Control Inmobiliario</span>
+            <span>Benitez Inmobiliaria</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Gestión Centralizada de Inmuebles & Operaciones
+          <h1 className="text-3xl sm:text-4xl">
+            Gestión de propiedades y operaciones
           </h1>
-          <p className="mt-2 text-slate-300 text-sm leading-relaxed">
+          <p className="mt-2 text-white/90 text-sm leading-relaxed">
             Supervisa el inventario de casas disponibles, controla señas y reservas al instante, administra los contratos de alquiler y accede a los datos confidenciales de llaves y dueños para tus agentes.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm transition-all shadow-md active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-brand-50 text-brand-700 font-semibold text-sm transition-all shadow-md active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Publicar Nueva Propiedad</span>
@@ -78,14 +78,14 @@ export const DashboardOverview = () => {
               onClick={() => setCurrentView('calendar')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm transition-all backdrop-blur-sm"
             >
-              <CalendarDays className="w-4 h-4 text-indigo-300" />
+              <CalendarDays className="w-4 h-4 text-white" />
               <span>Calendario de Alquileres</span>
             </button>
             <button
               onClick={() => setCurrentView('keys')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold text-sm transition-all border border-amber-400/30 backdrop-blur-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm transition-all border border-white/30 backdrop-blur-sm"
             >
-              <Key className="w-4 h-4 text-amber-400" />
+              <Key className="w-4 h-4 text-white" />
               <span>Control de Llaves & Alarma</span>
             </button>
           </div>

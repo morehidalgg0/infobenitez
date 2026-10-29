@@ -2,7 +2,7 @@ import { query, withTransaction } from './_lib/db.js';
 import { send, readJson, handle, httpError } from './_lib/http.js';
 import { requireUser } from './_lib/auth.js';
 import { buildProfile } from './_lib/profile.js';
-import { calcSaleSplit } from '../src/utils/saleSplit.js';
+import { splitForMovement } from '../src/utils/saleSplit.js';
 
 const COLLECTIONS = ['properties', 'agents', 'reservations', 'rentals', 'movements'];
 
@@ -111,7 +111,7 @@ export default handle(async (req, res) => {
           };
         }
         if (data.kind === 'venta') {
-          const split = calcSaleSplit(data.salePrice, data.commissionPercent, data.agencySplitPercent);
+          const split = splitForMovement(data);
           data = { ...data, type: 'ingreso', ...split, amount: split.commissionTotal };
         }
       }

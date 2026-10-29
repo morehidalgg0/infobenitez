@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useRealEstate } from '../../context/RealEstateContext';
+import { BrandLogo } from '../common/BrandLogo';
 import { 
-  Building2, 
+
   Search, 
   Plus, 
   ShieldCheck, 
@@ -48,19 +49,8 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16 gap-4">
           
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView('dashboard')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg text-slate-900 tracking-tight">InmoPanel</span>
-                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  Agencias
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium hidden sm:block">Gestión Inmobiliaria & Equipo</p>
-            </div>
+          <div className="cursor-pointer" onClick={() => setCurrentView('dashboard')}>
+            <BrandLogo subtitle="Panel del equipo" />
           </div>
 
           {/* Search bar */}
@@ -102,13 +92,13 @@ export const Navbar = () => {
                   <>
                     <ShieldCheck className="w-4 h-4 text-amber-600" />
                     <span className="hidden lg:inline">Modo Agente:</span>
-                    <span className="font-bold">Datos Privados ON</span>
+                    <span className="font-bold hidden sm:inline">Datos Privados ON</span>
                   </>
                 ) : (
                   <>
                     <EyeOff className="w-4 h-4 text-emerald-600" />
                     <span className="hidden lg:inline">Modo Presentación:</span>
-                    <span className="font-bold">Cliente Seguro</span>
+                    <span className="font-bold hidden sm:inline">Cliente Seguro</span>
                   </>
                 )}
               </button>
@@ -178,7 +168,7 @@ export const Navbar = () => {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
-              <span>Nueva Propiedad</span>
+              <span className="hidden sm:inline">Nueva Propiedad</span>
             </button>
 
             {/* Usuario logueado */}

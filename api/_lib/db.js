@@ -49,4 +49,12 @@ CREATE TABLE IF NOT EXISTS records (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (collection, id)
 );
+
+CREATE TABLE IF NOT EXISTS images (
+  id TEXT PRIMARY KEY,
+  mime TEXT NOT NULL,
+  bytes BYTEA NOT NULL,
+  uploaded_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;

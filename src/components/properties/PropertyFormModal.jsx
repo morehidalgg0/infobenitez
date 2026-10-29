@@ -12,8 +12,11 @@ import {
   Check,
   ShieldCheck,
   Info,
-  Wifi
+  Wifi,
+  Upload,
+  Star
 } from 'lucide-react';
+import { uploadPhoto } from '../../utils/imageUpload';
 
 const COMMON_AMENITIES = [
   "Piscina",
@@ -34,11 +37,6 @@ const COMMON_AMENITIES = [
   "Sin expensas"
 ];
 
-const DEFAULT_PHOTOS = [
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80"
-];
-
 export const PropertyFormModal = () => {
   const { 
     isCreateModalOpen, 
@@ -47,7 +45,8 @@ export const PropertyFormModal = () => {
     setSelectedPropertyForEdit,
     addProperty, 
     updateProperty,
-    agents
+    agents,
+    notify
   } = useRealEstate();
 
   const isEditing = Boolean(selectedPropertyForEdit);
@@ -55,6 +54,7 @@ export const PropertyFormModal = () => {
 
   const [activeTab, setActiveTab] = useState('general'); // 'general' | 'technical' | 'agent' | 'photos'
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null); // { done, total }
 
   const [formData, setFormData] = useState({
     refCode: '',
@@ -85,7 +85,7 @@ export const PropertyFormModal = () => {
       price: 180000,
       expenses: 0
     },
-    images: DEFAULT_PHOTOS,
+    images: [],
     agentData: {
       owner: {
         name: '',
@@ -175,7 +175,7 @@ export const PropertyFormModal = () => {
           price: 210000,
           expenses: 0
         },
-        images: DEFAULT_PHOTOS,
+        images: [],
         agentData: {
           owner: {
             name: '',
@@ -240,6 +240,33 @@ export const PropertyFormModal = () => {
       images: [...prev.images, newPhotoUrl.trim()]
     }));
     setNewPhotoUrl('');
+  };
+
+  const handleUploadPhotos = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    if (files.length === 0) return;
+    setUploadProgress({ done: 0, total: files.length });
+    let failed = 0;
+    for (const [i, file] of files.entries()) {
+      try {
+        const url = await uploadPhoto(file);
+        setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
+      } catch (err) {
+        failed += 1;
+        notify(err.message, 'error');
+      }
+      setUploadProgress({ done: i + 1, total: files.length });
+    }
+    setUploadProgress(null);
+    if (failed < files.length) notify(`${files.length - failed} foto(s) subida(s). Guardá la propiedad para confirmarlas.`, 'success');
+  };
+
+  const handleMakeCover = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      images: [prev.images[idx], ...prev.images.filter((_, i) => i !== idx)]
+    }));
   };
 
   const handleRemovePhoto = (idx) => {
@@ -826,13 +853,31 @@ export const PropertyFormModal = () => {
           {/* TAB 4: FOTOS */}
           {activeTab === 'photos' && (
             <div className="space-y-4 text-xs">
-              
+
+              <label className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed text-center transition-colors ${
+                uploadProgress ? 'border-indigo-300 bg-indigo-50 cursor-wait' : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50/50 cursor-pointer'
+              }`}>
+                <Upload className="w-6 h-6 text-indigo-500" />
+                <span className="font-bold text-slate-700 text-sm">
+                  {uploadProgress ? `Subiendo ${uploadProgress.done} de ${uploadProgress.total}…` : 'Subir fotos desde la compu o el celular'}
+                </span>
+                <span className="text-slate-500">JPG, PNG o WebP. Se achican automáticamente. Podés elegir varias.</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  multiple
+                  disabled={Boolean(uploadProgress)}
+                  onChange={handleUploadPhotos}
+                  className="sr-only"
+                />
+              </label>
+
               <div className="flex gap-2">
                 <input
                   type="url"
                   value={newPhotoUrl}
                   onChange={(e) => setNewPhotoUrl(e.target.value)}
-                  placeholder="Pega la URL de una imagen (ej. https://...)"
+                  placeholder="O pegá el enlace de una imagen (https://...)"
                   className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                 />
                 <button
@@ -849,14 +894,26 @@ export const PropertyFormModal = () => {
                 {formData.images.map((img, idx) => (
                   <div key={idx} className="relative aspect-[16/10] rounded-xl overflow-hidden group border border-slate-200">
                     <img src={img} alt="" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(idx)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Eliminar foto"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleMakeCover(idx)}
+                          className="p-1.5 rounded-lg bg-slate-900/80 text-white"
+                          title="Usar como portada"
+                        >
+                          <Star className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(idx)}
+                        className="p-1.5 rounded-lg bg-rose-600 text-white"
+                        title="Eliminar foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                     {idx === 0 && (
                       <span className="absolute bottom-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                         Portada

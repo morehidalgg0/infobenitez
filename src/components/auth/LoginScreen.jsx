@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRealEstate } from '../../context/RealEstateContext';
-import { Building2, LogIn, User, Lock, AlertTriangle } from 'lucide-react';
+import { LogIn, User, Lock, AlertTriangle } from 'lucide-react';
+import { BrandMark } from '../common/BrandLogo';
 
 export const LoginScreen = () => {
   const { login } = useRealEstate();
@@ -21,12 +22,10 @@ export const LoginScreen = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-3xl border border-slate-200 shadow-xl p-7 space-y-6">
 
-        <div className="flex flex-col items-center text-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-            <Building2 className="w-6 h-6" />
-          </div>
+        <div className="flex flex-col items-center text-center gap-4">
+          <BrandMark size={72} />
           <div>
-            <h1 className="font-extrabold text-xl text-slate-900 tracking-tight">InmoPanel</h1>
+            <h1 className="text-2xl text-slate-800">Benitez <span className="text-brand-500">Inmobiliaria</span></h1>
             <p className="text-xs text-slate-500 mt-1">Ingresá con tu cuenta de broker o de administración</p>
           </div>
         </div>

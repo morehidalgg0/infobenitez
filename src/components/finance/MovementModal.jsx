@@ -1,15 +1,45 @@
 import React, { useState } from 'react';
-import { useRealEstate, calcSaleSplit, ADMIN_USER_ID } from '../../context/RealEstateContext';
+import { useRealEstate, ADMIN_USER_ID } from '../../context/RealEstateContext';
+import { splitForMovement } from '../../utils/saleSplit';
 import { X, TrendingUp, TrendingDown, Building2 } from 'lucide-react';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, formatMoney } from './financeUtils';
 
 const today = () => new Date().toISOString().split('T')[0];
 
-export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) => {
+// Titular de la venta de una propiedad: el broker asignado, o la inmobiliaria si es de la dueña
+const saleOwnerFor = (property, brokers) =>
+  brokers.find(b => b.id === property?.agentData?.assignedAgentId)?.id || ADMIN_USER_ID;
+
+// soldProperty: propiedad recién marcada como Vendida, para registrar su comisión
+export const MovementModal = ({ movement, initialType = 'ingreso', soldProperty, onClose }) => {
   const { brokers, properties, isAdmin, currentUser, addMovement, updateMovement } = useRealEstate();
 
+  const splitPercentFor = (userId) =>
+    userId === ADMIN_USER_ID ? 100 : (brokers.find(b => b.id === userId)?.agencySplitPercent ?? currentUser.agencySplitPercent ?? 50);
+
   const [form, setForm] = useState(() => {
-    if (movement) return { ...movement };
+    if (movement) return { commissionMode: 'percent', ...movement };
+    if (soldProperty) {
+      const ownerId = isAdmin ? saleOwnerFor(soldProperty, brokers) : currentUser.id;
+      return {
+        userId: ownerId,
+        type: 'ingreso',
+        kind: 'venta',
+        date: today(),
+        concept: `Venta ${soldProperty.refCode} - ${soldProperty.title}`,
+        category: 'Honorarios venta',
+        currency: soldProperty.pricing?.currency || 'USD',
+        amount: '',
+        propertyId: soldProperty.id,
+        propertyRef: soldProperty.refCode,
+        salePrice: soldProperty.pricing?.price || '',
+        commissionMode: 'percent',
+        commissionPercent: soldProperty.agentData?.commission?.ratePercent ?? 3,
+        commissionAmount: '',
+        agencySplitPercent: splitPercentFor(ownerId),
+        notes: ''
+      };
+    }
     const ownerId = isAdmin ? ADMIN_USER_ID : currentUser.id;
     const isBroker = ownerId !== ADMIN_USER_ID;
     return {
@@ -24,30 +54,30 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
       propertyId: '',
       propertyRef: '',
       salePrice: '',
+      commissionMode: 'percent',
       commissionPercent: 3,
-      agencySplitPercent: currentUser.agencySplitPercent ?? 50,
+      commissionAmount: '',
+      agencySplitPercent: splitPercentFor(ownerId),
       notes: ''
     };
   });
 
   const set = (fields) => setForm(prev => ({ ...prev, ...fields }));
   const ownerIsBroker = form.userId !== ADMIN_USER_ID;
-  const isSale = form.type === 'ingreso' && form.kind === 'venta' && ownerIsBroker;
-  const split = calcSaleSplit(form.salePrice, form.commissionPercent, form.agencySplitPercent);
+  const isSale = form.type === 'ingreso' && form.kind === 'venta';
+  const byAmount = form.commissionMode === 'amount';
+  const split = splitForMovement(form);
+  // % equivalente cuando se carga el monto exacto
+  const effectivePercent = Number(form.salePrice) > 0 ? Math.round(split.commissionTotal / Number(form.salePrice) * 10000) / 100 : 0;
 
   const handleOwnerChange = (userId) => {
-    const agent = brokers.find(a => a.id === userId);
-    set({
-      userId,
-      kind: agent && form.type === 'ingreso' ? form.kind : 'general',
-      agencySplitPercent: agent?.agencySplitPercent ?? form.agencySplitPercent
-    });
+    set({ userId, agencySplitPercent: splitPercentFor(userId) });
   };
 
   const handleTypeChange = (type) => {
     set({
       type,
-      kind: type === 'ingreso' && ownerIsBroker ? 'venta' : 'general',
+      kind: type === 'ingreso' && (ownerIsBroker || soldProperty) ? 'venta' : 'general',
       category: type === 'ingreso' ? (ownerIsBroker ? 'Honorarios venta' : INCOME_CATEGORIES[0]) : EXPENSE_CATEGORIES[0]
     });
   };
@@ -64,7 +94,8 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
       concept: form.concept || `Venta ${prop.refCode} - ${prop.title}`,
       salePrice: prop.pricing?.price || form.salePrice,
       currency: prop.pricing?.currency || form.currency,
-      commissionPercent: prop.agentData?.commission?.ratePercent ?? form.commissionPercent
+      commissionPercent: prop.agentData?.commission?.ratePercent ?? form.commissionPercent,
+      ...(isAdmin && !movement ? { userId: saleOwnerFor(prop, brokers), agencySplitPercent: splitPercentFor(saleOwnerFor(prop, brokers)) } : {})
     });
   };
 
@@ -76,8 +107,10 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
       category: isSale ? 'Honorarios venta' : form.category,
       amount: isSale ? split.commissionTotal : Number(form.amount) || 0,
       salePrice: isSale ? Number(form.salePrice) || 0 : undefined,
-      commissionPercent: isSale ? Number(form.commissionPercent) || 0 : undefined,
-      agencySplitPercent: isSale ? Number(form.agencySplitPercent) || 0 : undefined
+      commissionMode: isSale ? form.commissionMode : undefined,
+      commissionPercent: isSale ? (byAmount ? effectivePercent : Number(form.commissionPercent) || 0) : undefined,
+      commissionAmount: isSale && byAmount ? Number(form.commissionAmount) || 0 : undefined,
+      agencySplitPercent: isSale ? (ownerIsBroker ? Number(form.agencySplitPercent) || 0 : 100) : undefined
     };
     if (movement) updateMovement(movement.id, data);
     else addMovement(data);
@@ -91,9 +124,16 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 space-y-4">
         <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-          <h3 className="font-bold text-base text-slate-900">
-            {movement ? 'Editar movimiento' : 'Registrar movimiento'}
-          </h3>
+          <div>
+            <h3 className="font-bold text-base text-slate-900">
+              {movement ? 'Editar movimiento' : soldProperty ? 'Registrar comisión de la venta' : 'Registrar movimiento'}
+            </h3>
+            {soldProperty && (
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {soldProperty.refCode} quedó como Vendida. Confirmá el precio final y cuánto se cobró de honorarios.
+              </p>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
             <X className="w-5 h-5" />
           </button>
@@ -132,7 +172,7 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
             </button>
           </div>
 
-          {form.type === 'ingreso' && ownerIsBroker && (
+          {form.type === 'ingreso' && (
             <div className="flex gap-4 px-1">
               <label className="flex items-center gap-1.5 font-semibold text-slate-700 cursor-pointer">
                 <input type="radio" checked={form.kind === 'venta'} onChange={() => set({ kind: 'venta' })} />
@@ -195,16 +235,45 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">% Honorarios cobrados *</label>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-700 font-semibold">Honorarios cobrados *</label>
+                  <div className="flex p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => set({ commissionMode: 'percent', commissionPercent: byAmount ? effectivePercent : form.commissionPercent })}
+                      className={`px-2 py-0.5 rounded-md ${!byAmount ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500'}`}
+                    >
+                      Porcentaje
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set({ commissionMode: 'amount', commissionAmount: byAmount ? form.commissionAmount : split.commissionTotal })}
+                      className={`px-2 py-0.5 rounded-md ${byAmount ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500'}`}
+                    >
+                      Monto exacto
+                    </button>
+                  </div>
+                </div>
+                {byAmount ? (
+                  <input
+                    type="number" min="0" step="0.01" required
+                    value={form.commissionAmount}
+                    onChange={(e) => set({ commissionAmount: e.target.value })}
+                    placeholder={`Monto en ${form.currency}`}
+                    className={inputCls}
+                  />
+                ) : (
                   <input
                     type="number" min="0" max="100" step="0.01" required
                     value={form.commissionPercent}
                     onChange={(e) => set({ commissionPercent: e.target.value })}
+                    placeholder="%"
                     className={inputCls}
                   />
-                </div>
+                )}
+              </div>
+              {ownerIsBroker && (
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">% para la inmobiliaria</label>
                   <input
@@ -216,14 +285,16 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
                     title={isAdmin ? '' : 'Lo define la administración'}
                   />
                 </div>
-              </div>
+              )}
 
               {/* Desglose exacto de la venta */}
               <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3.5 space-y-1.5">
                 <div className="flex justify-between text-slate-600">
-                  <span>Honorarios totales ({Number(form.commissionPercent) || 0}%)</span>
+                  <span>Honorarios totales ({byAmount ? effectivePercent : Number(form.commissionPercent) || 0}%)</span>
                   <strong className="text-slate-900">{formatMoney(split.commissionTotal, form.currency)}</strong>
                 </div>
+                {ownerIsBroker ? (
+                <>
                 <div className="flex justify-between text-indigo-800 font-bold text-sm">
                   <span className="flex items-center gap-1.5">
                     <Building2 className="w-4 h-4" />
@@ -235,6 +306,13 @@ export const MovementModal = ({ movement, initialType = 'ingreso', onClose }) =>
                   <span>Neto para el broker</span>
                   <span>{formatMoney(split.brokerShare, form.currency)}</span>
                 </div>
+                </>
+                ) : (
+                  <div className="flex justify-between text-indigo-800 font-bold text-sm">
+                    <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4" /> Para la inmobiliaria (venta propia)</span>
+                    <span>{formatMoney(split.commissionTotal, form.currency)}</span>
+                  </div>
+                )}
               </div>
             </>
           ) : (

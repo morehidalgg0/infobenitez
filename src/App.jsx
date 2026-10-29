@@ -10,7 +10,9 @@ import { RentalList } from './components/rentals/RentalList';
 import { KeyBoardOverview } from './components/keys/KeyBoardOverview';
 import { AgentDirectory } from './components/agents/AgentDirectory';
 import { FinanceView } from './components/finance/FinanceView';
+import { MovementModal } from './components/finance/MovementModal';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { BrandMark } from './components/common/BrandLogo';
 import { PropertyDetailModal } from './components/properties/PropertyDetailModal';
 import { PropertyFormModal } from './components/properties/PropertyFormModal';
 import { ReservationModal } from './components/reservations/ReservationModal';
@@ -20,11 +22,12 @@ import { DataBackupModal } from './components/common/DataBackupModal';
 import { CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 
 const MainAppContent = () => {
-  const { currentView, toastMessage, currentUser, authChecked } = useRealEstate();
+  const { currentView, toastMessage, currentUser, authChecked, soldPropertyForCommission, setSoldPropertyForCommission } = useRealEstate();
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-400">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 text-sm font-semibold text-slate-400">
+        <div className="animate-pulse"><BrandMark size={56} /></div>
         Cargando…
       </div>
     );
@@ -59,6 +62,13 @@ const MainAppContent = () => {
       <RentalModal />
       <SharePropertyModal />
       <DataBackupModal />
+      {soldPropertyForCommission && (
+        <MovementModal
+          key={soldPropertyForCommission.id}
+          soldProperty={soldPropertyForCommission}
+          onClose={() => setSoldPropertyForCommission(null)}
+        />
+      )}
 
       {/* Toast Notification */}
       {toastMessage && (
