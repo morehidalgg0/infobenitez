@@ -3,23 +3,18 @@ import { useRealEstate } from '../../context/RealEstateContext';
 import { Building2, LogIn, User, Lock, AlertTriangle } from 'lucide-react';
 
 export const LoginScreen = () => {
-  const { login, needsAdminSetup, setupAdminPassword, adminAccount } = useRealEstate();
+  const { login } = useRealEstate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (needsAdminSetup) {
-      if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
-      if (password !== confirmPassword) return setError('Las contraseñas no coinciden.');
-      setupAdminPassword(password);
-      return;
-    }
-    if (!login(username, password)) {
-      setError('Usuario o contraseña incorrectos.');
-    }
+    setIsSubmitting(true);
+    const result = await login(username, password);
+    setIsSubmitting(false);
+    if (!result.ok) setError(result.error);
   };
 
   return (
@@ -32,16 +27,11 @@ export const LoginScreen = () => {
           </div>
           <div>
             <h1 className="font-extrabold text-xl text-slate-900 tracking-tight">InmoPanel</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              {needsAdminSetup
-                ? `Primer ingreso: creá la contraseña de administración (usuario "${adminAccount.username}")`
-                : 'Ingresá con tu cuenta de broker o de administración'}
-            </p>
+            <p className="text-xs text-slate-500 mt-1">Ingresá con tu cuenta de broker o de administración</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-          {!needsAdminSetup && (
           <div>
             <label className="block text-slate-700 font-semibold mb-1">Usuario</label>
             <div className="relative">
@@ -51,6 +41,7 @@ export const LoginScreen = () => {
                 required
                 autoFocus
                 autoComplete="username"
+                autoCapitalize="none"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setError(''); }}
                 placeholder="Ej. shidalgo"
@@ -58,40 +49,21 @@ export const LoginScreen = () => {
               />
             </div>
           </div>
-          )}
 
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">{needsAdminSetup ? 'Nueva contraseña' : 'Contraseña'}</label>
+            <label className="block text-slate-700 font-semibold mb-1">Contraseña</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 required
-                autoFocus={needsAdminSetup}
-                autoComplete={needsAdminSetup ? 'new-password' : 'current-password'}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(''); }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pl-9 font-medium text-sm"
               />
             </div>
           </div>
-
-          {needsAdminSetup && (
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Repetir contraseña</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pl-9 font-medium text-sm"
-                />
-              </div>
-            </div>
-          )}
 
           {error && (
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold">
@@ -102,10 +74,11 @@ export const LoginScreen = () => {
 
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60"
           >
             <LogIn className="w-4 h-4" />
-            <span>{needsAdminSetup ? 'Crear contraseña e ingresar' : 'Ingresar'}</span>
+            <span>{isSubmitting ? 'Ingresando…' : 'Ingresar'}</span>
           </button>
         </form>
 

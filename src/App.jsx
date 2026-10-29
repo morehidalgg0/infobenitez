@@ -20,8 +20,15 @@ import { DataBackupModal } from './components/common/DataBackupModal';
 import { CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 
 const MainAppContent = () => {
-  const { currentView, toastMessage, currentUser } = useRealEstate();
+  const { currentView, toastMessage, currentUser, authChecked } = useRealEstate();
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-400">
+        Cargando…
+      </div>
+    );
+  }
   if (!currentUser) return <LoginScreen />;
 
   return (

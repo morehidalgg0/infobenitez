@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite --port 3001 --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:setup": "node scripts/setup-db.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^3.0.1"
